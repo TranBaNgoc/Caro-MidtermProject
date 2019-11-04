@@ -2,42 +2,47 @@ import React from 'react';
 import Button from 'react-bootstrap/Button';
 import Form from 'react-bootstrap/Form';
 import Spinner from 'react-bootstrap/Spinner';
+import Image from 'react-bootstrap/Image';
 
 import { connect } from 'react-redux';
 import { bindActionCreators } from 'redux';
 import { withRouter } from 'react-router-dom';
-import fetchRegisterAction from '../actions/Register';
+import {
+  fetchGetProfile,
+  fetchPostUpdateProfile
+} from '../actions/UpdateProfile';
 import '../App.css';
 
-class RegisterView extends React.Component {
+const ls = require('localStorage');
 
-  handleSubmit = e => {
-    e.preventDefault();
-    const { fetchRegister, history } = this.props;
-    Promise.resolve(
-      fetchRegister(
-        e.target.username.value,
-        e.target.password.value,
-        e.target.displayname.value,
-        this.image
-      )
-    ).then(() => {
+class UpdateProfileView extends React.Component {
+  constructor(props) {
+    super(props);
+
+    if (ls.getItem('token')) {
+      const { fetchGet } = this.props;
+      Promise.resolve(fetchGet());
+    } else {
+      const { history } = this.props;
       history.push('/login');
-    });
-  };
-
-  handleChangeImage = e => {
-    e.preventDefault();
-    if (e.target.files[0]) {
-     // eslint-disable-next-line prefer-destructuring
-     this.image = e.target.files[0];
     }
   }
 
-  render() {
-    const { RegisterState } = this.props;
-    const { error, pending } = RegisterState;
+  handleSubmit = e => {
+    e.preventDefault();
+    const { fetchUpdate } = this.props;
+    Promise.resolve(
+      fetchUpdate(
+        e.target.username.value,
+        e.target.password.value,
+        e.target.displayname.value
+      )
+    );
+  };
 
+  render() {
+    const { UpdateState } = this.props;
+    const { error, pending } = UpdateState;
     return (
       <div
         style={{ height: '90vh', display: 'flex', justifyContent: 'center' }}
@@ -47,8 +52,21 @@ class RegisterView extends React.Component {
           onSubmit={this.handleSubmit}
         >
           <Form.Label style={{ fontSize: '20px', width: '100%' }}>
-            SIGN UP
+            UPDATE PROFILE
           </Form.Label>
+
+          <Form.Group
+            controlId="formBasicUsername"
+            style={{ textAlign: 'left' }}
+          >
+            <Form.Label>Username</Form.Label>
+            <Form.Control
+              value={UpdateState.username}
+              type="text"
+              placeholder="sieusaoxo"
+              name="username"
+            />
+          </Form.Group>
 
           <Form.Group
             controlId="formBasicDisplayname"
@@ -59,15 +77,8 @@ class RegisterView extends React.Component {
               type="text"
               placeholder="Em tập chơi"
               name="displayname"
+              defaultValue={UpdateState.displayname}
             />
-          </Form.Group>
-
-          <Form.Group
-            controlId="formBasicUsername"
-            style={{ textAlign: 'left' }}
-          >
-            <Form.Label>Username</Form.Label>
-            <Form.Control type="text" placeholder="sieusaoxo" name="username" />
           </Form.Group>
 
           <Form.Group
@@ -79,6 +90,7 @@ class RegisterView extends React.Component {
               type="password"
               placeholder="******"
               name="password"
+              defaultValue={UpdateState.password}
             />
           </Form.Group>
 
@@ -87,7 +99,15 @@ class RegisterView extends React.Component {
             style={{ textAlign: 'left' }}
           >
             <Form.Label>Retype Password</Form.Label>
-            <Form.Control type="password" placeholder="******" />
+            <Form.Control
+              type="password"
+              placeholder="******"
+              defaultValue={UpdateState.password}
+            />
+          </Form.Group>
+
+          <Form.Group>
+            <Image width="15%" src={UpdateState.avatar} roundedCircle />
           </Form.Group>
 
           <Form.Group>
@@ -108,15 +128,8 @@ class RegisterView extends React.Component {
             )}
           </Form.Group>
 
-          <Form.Group
-            controlId="formBasicRetypePassword"
-            style={{ textAlign: 'left' }}
-          >
-            <Form.Label>Avatar</Form.Label>
-            <Form.Control type="file" onChange={this.handleChangeImage} />
-          </Form.Group>
           <Button variant="success" type="submit">
-            Register
+            Update
           </Button>
         </Form>
       </div>
@@ -125,13 +138,15 @@ class RegisterView extends React.Component {
 }
 
 const mapStateToProps = state => ({
-  RegisterState: state.RegisterReducer
+  UpdateState: state.UpdateProfileReducer,
+  GameState: state.Game
 });
 
 const mapDispatchToProps = dispatch =>
   bindActionCreators(
     {
-      fetchRegister: fetchRegisterAction
+      fetchUpdate: fetchPostUpdateProfile,
+      fetchGet: fetchGetProfile
     },
     dispatch
   );
@@ -139,4 +154,4 @@ const mapDispatchToProps = dispatch =>
 export default connect(
   mapStateToProps,
   mapDispatchToProps
-)(withRouter(RegisterView));
+)(withRouter(UpdateProfileView));

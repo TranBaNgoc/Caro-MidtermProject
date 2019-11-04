@@ -38,12 +38,11 @@ function fetchLogin(username, password) {
         }
 
         localStorage.setItem(
-          'user',
-          JSON.stringify({
-            displayname: res.data.user.displayname,
-            token: res.data.token
-          })
+          'displayname',
+          res.data.user.displayname  
         );
+
+        localStorage.setItem('token', res.data.token)
         dispatch(LoginSuccess(res.data.user));
         return true;
       })

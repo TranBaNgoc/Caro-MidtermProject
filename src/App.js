@@ -7,6 +7,8 @@ import Nav from 'react-bootstrap/Nav';
 import Game from './components/Game';
 import LoginView from './components/LoginView';
 import RegisterView from './components/RegisterView';
+import UpdateProfileView from './components/UpdateProfileView';
+import Home from './components/Home';
 
 import * as action from './actions/Game';
 import './App.css';
@@ -15,17 +17,26 @@ const ls = require('localStorage');
 
 class App extends React.Component {
   handleLogout = () => {
-    ls.removeItem('user');
+    ls.removeItem('token');
+    ls.removeItem('displayname');
     const { onLogout } = this.props;
     onLogout();
   };
 
+  leaveRoom = () => {
+    const { onLeaveRoom } = this.props;
+    onLeaveRoom();
+  }
+
   render() {
-    const user = ls.getItem('user');
+    const { GameState } = this.props;
+    const { onGame, user, winner } = GameState;
+    const token = ls.getItem('token');
     const components = [];
-    if (user === null) {
+    if (token === null || user === null) {
       components.push(
         <Link
+          key="login"
           to="/login"
           style={{
             color: 'white',
@@ -39,6 +50,7 @@ class App extends React.Component {
       );
       components.push(
         <Link
+          key="register"
           to="/register"
           style={{
             color: 'white',
@@ -50,23 +62,54 @@ class App extends React.Component {
           Register
         </Link>
       );
-    } else {
-      components.push(
-        <Link to="/login">
-          <text
-            onClick={this.handleLogout}
-            style={{
-              color: 'white',
-              textDecoration: 'none',
-              marginRight: '5px',
-              marginLeft: '10px'
-            }}
-          >
-            Logout
-          </text>
-        </Link>
-      );
-    }
+    } else if (!onGame) {
+        components.push(
+          <Link to="/profile" key="profile">
+            <text
+              style={{
+                color: 'white',
+                textDecoration: 'none',
+                marginRight: '5px',
+                marginLeft: '10px'
+              }}
+            >
+              Profile
+            </text>
+          </Link>
+        );
+
+        components.push(
+          <Link to="/login" key="logout">
+            <text
+              onClick={this.handleLogout}
+              style={{
+                color: 'white',
+                textDecoration: 'none',
+                marginRight: '5px',
+                marginLeft: '10px'
+              }}
+            >
+              Logout
+            </text>
+          </Link>
+        );
+      } else {
+        components.push(
+          <Link to="/" key="home">
+            <text
+              onClick={this.leaveRoom}
+              style={{
+                color: 'white',
+                textDecoration: 'none',
+                marginRight: '5px',
+                marginLeft: '10px'
+              }}
+            >
+              Leave room
+            </text>
+          </Link>
+        );
+      }
 
     return (
       <Router>
@@ -84,8 +127,8 @@ class App extends React.Component {
                 XO - Caro
               </Link>
             </Navbar.Brand>
-            <Nav className="mr-auto">
-              <></>
+            <Nav className="mr-auto" style={{marginLeft: '35%', fontSize: '30px', color: 'white'}}> 
+              <>{winner ? `Winner is ${winner}`: ""}</>
             </Nav>
             <Nav>
               <Link
@@ -110,8 +153,14 @@ class App extends React.Component {
               <RegisterView />
             </Route>
 
-            <Route exact path="/">
+            <Route exact path="/profile">
+              <UpdateProfileView />
+            </Route>
+            <Route exact path="/game">
               <Game />
+            </Route>
+            <Route exact path="/">
+              <Home />
             </Route>
           </Switch>
         </div>
@@ -128,6 +177,9 @@ const mapDispatchToProps = dispatch => {
   return {
     onLogout: () => {
       dispatch(action.Logout());
+    },
+    onLeaveRoom: () => {
+      dispatch(action.LeaveRoom());
     }
   };
 };

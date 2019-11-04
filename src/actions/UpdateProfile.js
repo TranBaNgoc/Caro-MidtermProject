@@ -1,44 +1,68 @@
-// import * as types from '../constants/ActionTypes'
 import axios from 'axios';
+import * as types from '../constants/ActionTypes'
 
-function RegisterSuccess() {
+const ls = require('localStorage');
+
+function UpdateSuccess(data) {
   return {
-    type: 'UPDATE_SUCCESS',
+    type: types.UPDATE_SUCCESS,
+    data
   };
 }
 
-function RegisterFail(error) {
+function UpdateFail(error) {
   return {
-    type: 'UPDATE_FAIL',
+    type: types.UPDATE_FAIL,
     error
   };
 }
 
-function RegisterPending() {
+function UpdatePending() {
   return {
-    type: 'UPDATE_PENDING'
+    type: types.UPDATE_PENDING
   };
 }
 
-function fetchRegister(username, password, displayname) {
+export function fetchPostUpdateProfile(username, password, displayname) {
   return dispatch => {
-    dispatch(RegisterPending());
+    dispatch(UpdatePending());
     return axios
-    .post(`https://btcn06-1612431.herokuapp.com/user/register`, {
+    .post(`https://btcn06-1612431.herokuapp.com/user/profile`, {
       username,
       password,
       displayname
     })
     .then(res => {
       if (res.data.error) {
-        dispatch(RegisterFail(res.data.error));
+        dispatch(UpdateFail(res.data.error));
       } else {
-        dispatch(RegisterSuccess);
+        const data = {
+          username,
+          password,
+          displayname
+        };
+        dispatch(UpdateSuccess(data));
       }
     }).catch(error => {
-      dispatch(RegisterFail(error));
+      dispatch(UpdateFail(error.response.data.error));
     });
   };
 }
 
-export default fetchRegister;
+export function fetchGetProfile() {
+  return dispatch => {
+    dispatch(UpdatePending());
+    return axios
+    .get(`https://btcn06-1612431.herokuapp.com/me`, {
+      headers: {
+        'Authorization': `Bearer ${ls.getItem(`token`)}`
+      }
+    }).then(res => {
+      dispatch(UpdateSuccess(res.data));
+      return res.data;
+    }).catch(err => {
+      dispatch(UpdateFail(err));
+      return false;
+    })
+  }
+}

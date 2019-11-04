@@ -1,13 +1,22 @@
 import React from 'react';
 import { connect } from 'react-redux';
 import { withRouter } from 'react-router-dom';
+import FormControl from 'react-bootstrap/FormControl';
+import Form from 'react-bootstrap/Form';
+import InputGroup from 'react-bootstrap/InputGroup';
+import Button from 'react-bootstrap/Button';
+import swal from 'sweetalert';
+
+// import io from '../constants/SocketIO';
+import SocketIO from 'socket.io-client';
 import '../App.css';
 import Board from './Board';
 import * as action from '../actions/Game';
-// import { getLogin } from '../reducers/Login';
+import Message from './Message';
 
 const localStorage = require('localStorage');
 
+let io;
 const MaxHeight = 20;
 const MaxWidth = 20;
 let value = -1;
@@ -17,12 +26,115 @@ let colorsArray = Array(400).fill('#dbbc8c');
 class Game extends React.Component {
   constructor(props) {
     super(props);
-    const user = localStorage.getItem('user');
-    if (user == null) {
+    const token = localStorage.getItem('token');
+    const { GameState } = this.props;
+    const { user, playWithBot } = GameState;
+
+    io = SocketIO.connect('localhost:4000');
+    // constructor global
+    colorsArray = Array(400).fill('#dbbc8c');
+    value = -1;
+    // End constructor of global
+
+    if (token == null || user == null) {
       const { history } = this.props;
       history.push('/login');
+    } else {
+      if (!playWithBot) {
+        io.on('BroadcastMessage', data => {
+          this.addMessage(data);
+        });
+
+        io.on('BroadcastStep', positionData => {
+          if (positionData.user.username === user.username) {
+            this.isYouNext = false;
+          } else {
+            this.isYouNext = true;
+          }
+          this.handleClick(positionData.position);
+        });
+
+        io.on('RequestResetGame', username => {
+          swal({
+            title: 'Are you sure?',
+            text: `Do you want to play new game${username === user.username?"":  `with ${username}?`}`,
+            icon: 'warning',
+            buttons: true,
+            dangerMode: true
+          }).then(willDelete => {
+            if (willDelete) {
+              this.resetGame();
+            } else {
+              const { history } = this.props;
+              history.push('/');
+            }
+          });
+        });
+      }
+      this.isYouNext = true;
     }
   }
+
+  // Máy đánh
+  componentDidUpdate() {
+    const { GameState } = this.props;
+    const { xIsNext, playWithBot, history, stepNumber, winner } = GameState;
+    if (playWithBot) {
+      const histories = history.slice(0, stepNumber + 1);
+      const current = histories[histories.length - 1];
+      const squares = current.squares.slice();
+      if (xIsNext) return;
+
+      let i = Math.floor(Math.random() * 400);
+      while (squares[i] !== null) {
+        i = Math.floor(Math.random() * 400);
+      }
+      if (winner === null && value !== -1) {
+        this.handleClick(i);
+      }
+    } else {
+      const objDiv = document.getElementById('message-body');
+      objDiv.scrollTop = objDiv.scrollHeight;
+    }
+  }
+
+  // Nhắn tin
+  addMessage = messageData => {
+    const { GameState, onAddMessage } = this.props;
+    const { messages, user } = GameState;
+
+    if (user != null) {
+      messages.push(
+        <Message
+          content={messageData.message}
+          isOwn={user.username === messageData.user}
+        />
+      );
+      onAddMessage(messages);
+    }
+  };
+
+  sendMessage = e => {
+    const messageText = e.target.messageText.value;
+    e.target.messageText.value = '';
+    e.preventDefault();
+
+    if (messageText === '') return;
+
+    const { GameState } = this.props;
+    const { user, playWithBot } = GameState;
+
+    // Start socket client
+    const messageData = {
+      message: messageText,
+      user: user.username
+    };
+
+    if (!playWithBot) {
+      io.emit('AddMessage', messageData);
+    }
+    // End socket client
+  };
 
   isBlock2Ends = (squares, type, competitor) => {
     const row = Math.floor(value / 20);
@@ -129,10 +241,10 @@ class Game extends React.Component {
     if (step !== history.length - 1) {
       value = -1;
       colorsArray = Array(400).fill('#dbbc8c');
-      onJumpToStep(step);
+      onJumpToStep(step, false);
     } else {
       value = backupvalue;
-      onJumpToStep(step);
+      onJumpToStep(step, true);
     }
 
     for (let i = 0; i < history.length; i += 1) {
@@ -149,6 +261,33 @@ class Game extends React.Component {
     }
   };
 
+  addStep = position => {
+    if (!this.isYouNext) return;
+
+    const { GameState } = this.props;
+    const { history, stepNumber, user, playWithBot, winner } = GameState;
+    const histories = history.slice(0, stepNumber + 1);
+    const current = histories[histories.length - 1];
+    const squares = current.squares.slice();
+
+    // Nếu ô đó đã có người đánh rồi hoặc game đã kết thúc thì dừng hàm
+    if (winner || squares[position]) {
+      return;
+    }
+
+    if (!playWithBot) {
+      io.emit('AddStep', { user, position });
+      io.emit('AddMessage', { message: `I have just tick at (${Math.floor(position / 20) + 1}:${position % 20 + 1})`,
+        user: user.username})
+    } else {
+      backupvalue = value;
+      for (let j = 0; j < histories.length; j += 1) {
+        document.getElementById(j).style.background = '#4CAF50';
+      }
+      this.handleClick(position);
+    }
+  };
+
   calculateWinner(squares) {
     if (value === -1) {
       return null;
@@ -158,8 +297,9 @@ class Game extends React.Component {
     const column = value % 20;
 
     const thisValue = squares[row * 20 + column];
+    // console.log(squares);
     let winLine = Array(5).fill(null);
-    // Kiểm tra hàng dọc chứa điểm vừa đánh
+    // // Kiểm tra hàng dọc chứa điểm vừa đánh
     for (let index = row - 4; index <= row; index += 1) {
       winLine = Array(5).fill(null);
       // Nếu ô row + index (Ô đầu tiên của dãy 5) nằm ngoài bàn cờ
@@ -172,6 +312,7 @@ class Game extends React.Component {
 
       for (let i = index; i < index + 5; i += 1) {
         winLine[i - index] = i * MaxWidth + column;
+        // console.log(squares[i * MaxWidth + column])
         if (i > MaxHeight - 1) {
           isWon = false;
           break;
@@ -195,6 +336,9 @@ class Game extends React.Component {
     // // Kiểm tra hàng ngang chứa điểm vừa đánh
     for (let index = column - 4; index <= column; index += 1) {
       winLine = Array(5).fill(null);
+      if (index < 0) {
+        break;
+      }
 
       // Nếu ô column + index (Ô đầu tiên của dãy 5) nằm ngoài bàn cờ
       if (index < 0) {
@@ -209,7 +353,6 @@ class Game extends React.Component {
           isWon = false;
           break;
         }
-
         if (squares[row * MaxWidth + i] !== thisValue) {
           isWon = false;
           break;
@@ -226,6 +369,7 @@ class Game extends React.Component {
     }
 
     // // Kiểm tra hàng chéo từ trái qua, trên xuống chứa điểm vừa đánh
+
     for (let index = -4; index <= 0; index += 1) {
       winLine = Array(5).fill(null);
 
@@ -259,6 +403,7 @@ class Game extends React.Component {
     }
 
     // // Kiểm tra hàng chéo từ trái qua, dưới lên chứa điểm vừa đánh
+
     for (let index = -4; index <= 0; index += 1) {
       winLine = Array(5).fill(null);
 
@@ -294,42 +439,42 @@ class Game extends React.Component {
     return null;
   }
 
-  handleClickReset() {
-    colorsArray = Array(400).fill('#dbbc8c');
-    const { onResetGame, GameState } = this.props;
-    const { history } = GameState;
-    for (let i = 0; i < history.length; i += 1) {
-      document.getElementById(i).style.fontWeight = 'normal';
-    }
-
-    value = -1;
-
-    onResetGame();
-  }
-
   handleClickSort() {
     const { onSortHistory } = this.props;
     onSortHistory();
   }
 
+  resetGame() {
+    colorsArray = Array(400).fill('#dbbc8c');
+    const { onResetGame } = this.props;
+    value = -1;
+    onResetGame();
+  }
+
+  handleClickReset() {
+    const { GameState } = this.props;
+    const { user, playWithBot } = GameState;
+    if (playWithBot) {
+      this.resetGame();
+    } else {
+      io.emit('ResetGame', user.username);
+    }
+  }
+
   handleClick(i) {
     const { GameState } = this.props;
-    const { history, stepNumber, xIsNext } = GameState;
-
+    const { history, stepNumber, xIsNext, winner } = GameState;
     const histories = history.slice(0, stepNumber + 1);
     const current = histories[histories.length - 1];
     const squares = current.squares.slice();
 
-    const winner = this.calculateWinner(squares);
+    // Nếu ô đó đã có người đánh rồi hoặc game đã kết thúc thì dừng hàm
     if (winner || squares[i]) {
       return;
     }
 
-    for (let j = 0; j < histories.length; j += 1) {
-      document.getElementById(j).style.background = '#4CAF50';
-    }
     value = i;
-    backupvalue = value;
+    // backupvalue = value;
     squares[i] = xIsNext ? 'X' : 'O';
 
     const { onAddStep } = this.props;
@@ -343,21 +488,34 @@ class Game extends React.Component {
       histories.length,
       !xIsNext
     );
+
+    const win = this.calculateWinner(squares);
+    if (win !== null) {
+      const { onAddWinner } = this.props;
+      onAddWinner(win);
+    }
   }
 
   render() {
     const { GameState } = this.props;
-    const { history, stepNumber, isIncrease, xIsNext } = GameState;
+    const {
+      history,
+      stepNumber,
+      messages,
+      playWithBot,
+      isIncrease
+    } = GameState;
     const current = history[stepNumber];
-    const winner = this.calculateWinner(current.squares);
+
     const Style = {
       margin: '5px',
       background: '#4CAF50' /* Green */,
       border: 'none',
       color: 'white',
       padding: '0px',
-      width: '160px',
-      height: '40px'
+      width: '200px',
+      height: '40px',
+      fontSize: '14px'
     };
 
     const moves = [];
@@ -370,7 +528,7 @@ class Game extends React.Component {
           : 'Đi lại từ đầu';
 
         moves.push(
-          <li key={i}>
+          <li key={i} style={{ textDecoration: 'none' }}>
             <button
               type="button"
               style={Style}
@@ -391,7 +549,7 @@ class Game extends React.Component {
           : 'Đi lại từ đầu';
 
         moves.push(
-          <li key={i}>
+          <li key={i} style={{ textDecoration: 'none' }}>
             <button
               type="button"
               style={Style}
@@ -405,13 +563,6 @@ class Game extends React.Component {
       }
     }
 
-    let status;
-    if (winner) {
-      status = `${winner} chiến thắng`;
-    } else {
-      status = `${xIsNext ? 'X' : 'O'} tiếp theo`;
-    }
-
     const sourceImgSort = isIncrease
       ? 'https://imgur.com/6l1wdoQ.png'
       : 'https://imgur.com/y0uioJc.png';
@@ -420,7 +571,7 @@ class Game extends React.Component {
       <div className="App">
         <header className="App-header">
           <div className="game">
-            <div className="status">
+            <div className="status" style={{ width: '115px' }}>
               <button
                 type="button"
                 onClick={() => this.handleClickReset()}
@@ -428,33 +579,87 @@ class Game extends React.Component {
               >
                 <img src="https://i.imgur.com/n2W67wf.png" alt="Chơi lại" />
               </button>
+
+              {playWithBot ? (
+                ''
+              ) : (
+                <div>
+                  <button type="button" className="myButton">
+                    Undo
+                  </button>
+                  <button type="button" className="myButton">
+                    Surrender
+                  </button>
+                </div>
+              )}
             </div>
-            <div className="game-board">
+            <div className="game-board" style={{ width: '100%' }}>
               <Board
                 squares={current.squares}
                 colors={colorsArray}
-                onClick={i => this.handleClick(i)}
+                onClick={i => this.addStep(i)}
               />
             </div>
 
-            <div style={{ marginLeft: '15px' }} className="game-info">
-              <div>{status}</div>
-              <button
-                type="button"
-                onClick={() => this.handleClickSort()}
-                style={{ border: 'none', background: 'transparent' }}
+            {playWithBot ? (
+              <div
+                style={{
+                  marginLeft: '15px',
+                  width: '100%'
+                }}
+                className="game-info"
               >
-                <img
-                  src={sourceImgSort}
-                  alt="Sắp xếp danh sách"
-                  style={{ width: '40px', height: '40px', float: 'right' }}
-                />
-              </button>
+                <button
+                  type="button"
+                  onClick={() => this.handleClickSort()}
+                  style={{ border: 'none', background: 'transparent' }}
+                >
+                  <img
+                    src={sourceImgSort}
+                    alt="Sắp xếp danh sách"
+                    style={{ width: '40px', height: '40px', float: 'right' }}
+                  />
+                </button>
 
-              <div style={{ height: '88vh', overflow: 'scroll' }}>
-                <ul style={{ marginTop: '0px' }}>{moves}</ul>
+                <div
+                  style={{
+                    overflowX: 'hidden',
+                    overflowY: 'auto',
+                    height: '85vh'
+                  }}
+                >
+                  <ul style={{ marginTop: '0px' }}>{moves}</ul>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="messenger" style={{ color: 'black' }}>
+                <div className="message-header">CHAT BOX</div>
+                <hr style={{ marginTop: '30px' }} />
+
+                <div className="message-body" id="message-body">
+                  {messages}
+                </div>
+
+                <Form onSubmit={this.sendMessage} autoComplete="off">
+                  <InputGroup
+                    className="mb-3 message-input"
+                    style={{ padding: '0px', margin: '0px' }}
+                  >
+                    <FormControl
+                      style={{ padding: '0px' }}
+                      aria-label="Recipient's username"
+                      aria-describedby="basic-addon2"
+                      name="messageText"
+                    />
+                    <InputGroup.Append>
+                      <Button variant="success" type="submit">
+                        Send
+                      </Button>
+                    </InputGroup.Append>
+                  </InputGroup>
+                </Form>
+              </div>
+            )}
           </div>
         </header>
       </div>
@@ -477,8 +682,14 @@ const mapDispatchToProps = dispatch => {
     onSortHistory: () => {
       dispatch(action.Sort());
     },
-    onJumpToStep: stepNumber => {
-      dispatch(action.JumpToStep(stepNumber));
+    onJumpToStep: (stepNumber, isEnd) => {
+      dispatch(action.JumpToStep(stepNumber, isEnd));
+    },
+    onAddMessage: messages => {
+      dispatch(action.AddMessage(messages));
+    },
+    onAddWinner: winner => {
+      dispatch(action.AddWinner(winner));
     }
   };
 };

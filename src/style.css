@@ -17,16 +17,15 @@ ol, ul {
 }
 
 .square {
-  background: #fff;
+  background: #5e99e6;
   border: 1px solid #999;
   float: left;
-  font-size: 24px;
+  font-size: 20px;
   font-weight: bold;
-  line-height: 34px;
+  line-height: 28px;
   height: 32px;
   margin-right: -1px;
   margin-top: -1px;
-  padding: 0;
   text-align: center;
   width: 32px;
 }

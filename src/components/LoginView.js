@@ -69,7 +69,6 @@ class LoginView extends React.Component {
               <Spinner
                 animation="border"
                 role="status"
-                style={{ marginBottom: '10px' }}
               >
                 <span className="sr-only">Loading...</span>
               </Spinner>
