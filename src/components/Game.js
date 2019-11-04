@@ -1,11 +1,6 @@
 import React from 'react';
 import { connect } from 'react-redux';
 import { withRouter } from 'react-router-dom';
-import FormControl from 'react-bootstrap/FormControl';
-import Form from 'react-bootstrap/Form';
-import InputGroup from 'react-bootstrap/InputGroup';
-import Button from 'react-bootstrap/Button';
-import swal from 'sweetalert';
 
 // import io from '../constants/SocketIO';
 import SocketIO from 'socket.io-client';
@@ -41,10 +36,6 @@ class Game extends React.Component {
       history.push('/login');
     } else {
       if (!playWithBot) {
-        io.on('BroadcastMessage', data => {
-          this.addMessage(data);
-        });
-
         io.on('BroadcastStep', positionData => {
           if (positionData.user.username === user.username) {
             this.isYouNext = false;
@@ -52,23 +43,6 @@ class Game extends React.Component {
             this.isYouNext = true;
           }
           this.handleClick(positionData.position);
-        });
-
-        io.on('RequestResetGame', username => {
-          swal({
-            title: 'Are you sure?',
-            text: `Do you want to play new game${username === user.username?"":  `with ${username}?`}`,
-            icon: 'warning',
-            buttons: true,
-            dangerMode: true
-          }).then(willDelete => {
-            if (willDelete) {
-              this.resetGame();
-            } else {
-              const { history } = this.props;
-              history.push('/');
-            }
-          });
         });
       }
       this.isYouNext = true;
@@ -277,8 +251,6 @@ class Game extends React.Component {
 
     if (!playWithBot) {
       io.emit('AddStep', { user, position });
-      io.emit('AddMessage', { message: `I have just tick at (${Math.floor(position / 20) + 1}:${position % 20 + 1})`,
-        user: user.username})
     } else {
       backupvalue = value;
       for (let j = 0; j < histories.length; j += 1) {
@@ -501,7 +473,6 @@ class Game extends React.Component {
     const {
       history,
       stepNumber,
-      messages,
       playWithBot,
       isIncrease
     } = GameState;
@@ -563,10 +534,6 @@ class Game extends React.Component {
       }
     }
 
-    const sourceImgSort = isIncrease
-      ? 'https://imgur.com/6l1wdoQ.png'
-      : 'https://imgur.com/y0uioJc.png';
-
     return (
       <div className="App">
         <header className="App-header">
@@ -601,65 +568,6 @@ class Game extends React.Component {
               />
             </div>
 
-            {playWithBot ? (
-              <div
-                style={{
-                  marginLeft: '15px',
-                  width: '100%'
-                }}
-                className="game-info"
-              >
-                <button
-                  type="button"
-                  onClick={() => this.handleClickSort()}
-                  style={{ border: 'none', background: 'transparent' }}
-                >
-                  <img
-                    src={sourceImgSort}
-                    alt="Sắp xếp danh sách"
-                    style={{ width: '40px', height: '40px', float: 'right' }}
-                  />
-                </button>
-
-                <div
-                  style={{
-                    overflowX: 'hidden',
-                    overflowY: 'auto',
-                    height: '85vh'
-                  }}
-                >
-                  <ul style={{ marginTop: '0px' }}>{moves}</ul>
-                </div>
-              </div>
-            ) : (
-              <div className="messenger" style={{ color: 'black' }}>
-                <div className="message-header">CHAT BOX</div>
-                <hr style={{ marginTop: '30px' }} />
-
-                <div className="message-body" id="message-body">
-                  {messages}
-                </div>
-
-                <Form onSubmit={this.sendMessage} autoComplete="off">
-                  <InputGroup
-                    className="mb-3 message-input"
-                    style={{ padding: '0px', margin: '0px' }}
-                  >
-                    <FormControl
-                      style={{ padding: '0px' }}
-                      aria-label="Recipient's username"
-                      aria-describedby="basic-addon2"
-                      name="messageText"
-                    />
-                    <InputGroup.Append>
-                      <Button variant="success" type="submit">
-                        Send
-                      </Button>
-                    </InputGroup.Append>
-                  </InputGroup>
-                </Form>
-              </div>
-            )}
           </div>
         </header>
       </div>

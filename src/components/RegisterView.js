@@ -109,7 +109,7 @@ class RegisterView extends React.Component {
           </Form.Group>
 
           <Form.Group
-            controlId="formBasicRetypePassword"
+            controlId="formAddAvatar"
             style={{ textAlign: 'left' }}
           >
             <Form.Label>Avatar</Form.Label>
