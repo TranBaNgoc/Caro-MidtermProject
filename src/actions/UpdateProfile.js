@@ -29,8 +29,8 @@ export function fetchPostUpdateProfile(username, password, displayname, image) {
     dispatch(UpdatePending());
 
     const p = new Promise(resovle => {
-      if (image === null) {
-        resovle(null);
+      if ((typeof image) === "string") {
+        resovle(image);
       } else {
         const storageRef = storage.storage().ref();
         const mainImage = storageRef.child(image.name + Date.now());
@@ -42,31 +42,10 @@ export function fetchPostUpdateProfile(username, password, displayname, image) {
       }
     });
 
-    return p.then(url => {
-      if (url === null) {
-        return axios
-          .post(`https://btcn06-1612431.herokuapp.com/user/profile`, {
-            username,
-            password,
-            displayname
-          })
-          .then(res => {
-            if (res.data.error) {
-              dispatch(UpdateFail(res.data.error));
-            } else {
-              const data = {
-                username,
-                password,
-                displayname
-              };
-              dispatch(UpdateSuccess(data));
-            }
-          })
-          .catch(() => {
-            dispatch(UpdateFail("Cập nhật thông tin không thành công"));
-          });
-      }
+   
 
+    return p.then(url => {
+      console.log(url);
       return axios
         .post(`https://btcn06-1612431.herokuapp.com/user/profile`, {
           username,

@@ -38,9 +38,10 @@ class UpdateProfileView extends React.Component {
 
   handleSubmit = e => {
     e.preventDefault();
-    const { fetchUpdate } = this.props;
+    const { fetchUpdate, UpdateState } = this.props;
     if (!this.image) {
-      this.image = null;
+      const {avatar} = UpdateState;
+      this.image = avatar;
     }
     
     Promise.resolve(
