@@ -28,14 +28,27 @@ class UpdateProfileView extends React.Component {
     }
   }
 
+  handleChangeImage = e => {
+    e.preventDefault();
+    if (e.target.files[0]) {
+      // eslint-disable-next-line prefer-destructuring
+      this.image = e.target.files[0];
+     }
+  }
+
   handleSubmit = e => {
     e.preventDefault();
     const { fetchUpdate } = this.props;
+    if (!this.image) {
+      this.image = null;
+    }
+    
     Promise.resolve(
       fetchUpdate(
         e.target.username.value,
         e.target.password.value,
-        e.target.displayname.value
+        e.target.displayname.value,
+        this.image,
       )
     );
   };
@@ -107,7 +120,8 @@ class UpdateProfileView extends React.Component {
           </Form.Group>
 
           <Form.Group>
-            <Image width="15%" src={UpdateState.avatar} roundedCircle />
+            <Image width="100px" height="100px" src={UpdateState.avatar} roundedCircle />
+            <Form.Control type="file" onChange={this.handleChangeImage}></Form.Control>
           </Form.Group>
 
           <Form.Group>

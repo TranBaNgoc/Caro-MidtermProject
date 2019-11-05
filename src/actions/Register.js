@@ -26,7 +26,7 @@ function fetchRegister(username, password, displayname, image) {
     dispatch(RegisterPending());
     const p = new Promise(resovle => {
       const storageRef = storage.storage().ref();
-      const mainImage = storageRef.child(image.name);
+      const mainImage = storageRef.child(image.name + Date.now());
       mainImage.put(image).then(() => {
         mainImage.getDownloadURL().then(url => {
           resovle(url);

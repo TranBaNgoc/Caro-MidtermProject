@@ -23,7 +23,8 @@ export default function UpdateProfileReducer(state = initialState, action) {
         displayname: action.data.displayname,
         username: action.data.username,
         password: action.data.password,
-        error: null
+        avatar: action.data.avatar,
+        error: null,
       };
     case types.UPDATE_FAIL:
       return {

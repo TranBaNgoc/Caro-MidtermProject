@@ -7,7 +7,6 @@ import InputGroup from 'react-bootstrap/InputGroup';
 import Button from 'react-bootstrap/Button';
 import swal from 'sweetalert';
 
-// import io from '../constants/SocketIO';
 import SocketIO from 'socket.io-client';
 import '../App.css';
 import Board from './Board';

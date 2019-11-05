@@ -1,5 +1,6 @@
 import axios from 'axios';
-import * as types from '../constants/ActionTypes'
+import * as types from '../constants/ActionTypes';
+import storage from '../constants/Firebase';
 
 const ls = require('localStorage');
 
@@ -23,28 +24,72 @@ function UpdatePending() {
   };
 }
 
-export function fetchPostUpdateProfile(username, password, displayname) {
+export function fetchPostUpdateProfile(username, password, displayname, image) {
   return dispatch => {
     dispatch(UpdatePending());
-    return axios
-    .post(`https://btcn06-1612431.herokuapp.com/user/profile`, {
-      username,
-      password,
-      displayname
-    })
-    .then(res => {
-      if (res.data.error) {
-        dispatch(UpdateFail(res.data.error));
+
+    const p = new Promise(resovle => {
+      if (image === null) {
+        resovle(null);
       } else {
-        const data = {
+        const storageRef = storage.storage().ref();
+        const mainImage = storageRef.child(image.name + Date.now());
+        mainImage.put(image).then(() => {
+          mainImage.getDownloadURL().then(url => {
+            resovle(url);
+          });
+        });
+      }
+    });
+
+    return p.then(url => {
+      if (url === null) {
+        return axios
+          .post(`https://btcn06-1612431.herokuapp.com/user/profile`, {
+            username,
+            password,
+            displayname
+          })
+          .then(res => {
+            if (res.data.error) {
+              dispatch(UpdateFail(res.data.error));
+            } else {
+              const data = {
+                username,
+                password,
+                displayname
+              };
+              dispatch(UpdateSuccess(data));
+            }
+          })
+          .catch(() => {
+            dispatch(UpdateFail("Cập nhật thông tin không thành công"));
+          });
+      }
+
+      return axios
+        .post(`https://btcn06-1612431.herokuapp.com/user/profile`, {
           username,
           password,
-          displayname
-        };
-        dispatch(UpdateSuccess(data));
-      }
-    }).catch(error => {
-      dispatch(UpdateFail(error.response.data.error));
+          displayname,
+          avatar: url
+        })
+        .then(res => {
+          if (res.data.error) {
+            dispatch(UpdateFail(res.data.error));
+          } else {
+            const data = {
+              username,
+              password,
+              displayname,
+              avatar: url
+            };
+            dispatch(UpdateSuccess(data));
+          }
+        })
+        .catch(() => {
+          dispatch(UpdateFail("Cập nhật thông tin không thành công"));
+        });
     });
   };
 }
@@ -53,16 +98,18 @@ export function fetchGetProfile() {
   return dispatch => {
     dispatch(UpdatePending());
     return axios
-    .get(`https://btcn06-1612431.herokuapp.com/me`, {
-      headers: {
-        'Authorization': `Bearer ${ls.getItem(`token`)}`
-      }
-    }).then(res => {
-      dispatch(UpdateSuccess(res.data));
-      return res.data;
-    }).catch(err => {
-      dispatch(UpdateFail(err));
-      return false;
-    })
-  }
+      .get(`https://btcn06-1612431.herokuapp.com/me`, {
+        headers: {
+          Authorization: `Bearer ${ls.getItem(`token`)}`
+        }
+      })
+      .then(res => {
+        dispatch(UpdateSuccess(res.data));
+        return res.data;
+      })
+      .catch(err => {
+        dispatch(UpdateFail(err));
+        return false;
+      });
+  };
 }
