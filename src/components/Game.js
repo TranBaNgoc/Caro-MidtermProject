@@ -7,7 +7,7 @@ import InputGroup from 'react-bootstrap/InputGroup';
 import Button from 'react-bootstrap/Button';
 import swal from 'sweetalert';
 
-import SocketIO from 'socket.io-client';
+import io from '../constants/SocketIO';
 import '../App.css';
 import Board from './Board';
 import * as action from '../actions/Game';
@@ -15,7 +15,6 @@ import Message from './Message';
 
 const localStorage = require('localStorage');
 
-let io;
 const MaxHeight = 20;
 const MaxWidth = 20;
 let value = -1;
@@ -26,10 +25,9 @@ class Game extends React.Component {
   constructor(props) {
     super(props);
     const token = localStorage.getItem('token');
-    const { GameState } = this.props;
+    let { GameState } = this.props;
     const { user, playWithBot } = GameState;
 
-    io = SocketIO.connect('localhost:4000');
     // constructor global
     colorsArray = Array(400).fill('#dbbc8c');
     value = -1;
@@ -56,7 +54,9 @@ class Game extends React.Component {
         io.on('RequestResetGame', username => {
           swal({
             title: 'Are you sure?',
-            text: `Do you want to play new game${username === user.username?"":  `with ${username}?`}`,
+            text: `Do you want to play new game${
+              username === user.username ? '' : `with ${username}?`
+            }`,
             icon: 'warning',
             buttons: true,
             dangerMode: true
@@ -68,6 +68,36 @@ class Game extends React.Component {
               history.push('/');
             }
           });
+        });
+
+        io.on('BroadcastUndo', username => {
+          if (user.username !== username) {
+            swal({
+              title: 'Are you sure?',
+              text: `${username} want to Undo. Do you agree?}`,
+              icon: 'warning',
+              buttons: true,
+              dangerMode: true
+            }).then(willDelete => {
+              if (willDelete) {
+                io.emit('AcceptUndo', true);
+              } else {
+                const messageData = {
+                  message: 'Mình không đồng ý đi lại.',
+                  user: user.username,
+                  avatar: localStorage.getItem('avatar')
+                };
+                io.emit('AddMessage', messageData);
+                io.emit('AcceptUndo', false);
+              }
+            });
+          }
+        });
+
+        io.on('BroadcaseAcceptUndo', isAccept => {
+          if (isAccept) {
+            this.onUndo();
+          }
         });
       }
       this.isYouNext = true;
@@ -88,6 +118,7 @@ class Game extends React.Component {
       while (squares[i] !== null) {
         i = Math.floor(Math.random() * 400);
       }
+
       if (winner === null && value !== -1) {
         this.handleClick(i);
       }
@@ -96,6 +127,13 @@ class Game extends React.Component {
       objDiv.scrollTop = objDiv.scrollHeight;
     }
   }
+
+  onUndo = () => {
+    const { GameState } = this.props;
+    const { stepNumber } = GameState;
+    this.jumpTo(stepNumber - 1);
+    this.isYouNext = !this.isYouNext;
+  };
 
   // Nhắn tin
   addMessage = messageData => {
@@ -237,7 +275,7 @@ class Game extends React.Component {
 
   jumpTo = step => {
     const { GameState, onJumpToStep } = this.props;
-    const { history } = GameState;
+    const { history, playWithBot } = GameState;
 
     if (step !== history.length - 1) {
       value = -1;
@@ -248,10 +286,12 @@ class Game extends React.Component {
       onJumpToStep(step, true);
     }
 
-    for (let i = 0; i < history.length; i += 1) {
-      if (i === step) {
-        document.getElementById(i).style.background = '#0c4517';
-      } else document.getElementById(i).style.background = '#4CAF50';
+    if (playWithBot) {
+      for (let i = 0; i < history.length; i += 1) {
+        if (i === step) {
+          document.getElementById(i).style.background = '#0c4517';
+        } else document.getElementById(i).style.background = '#4CAF50';
+      }
     }
   };
 
@@ -278,15 +318,33 @@ class Game extends React.Component {
 
     if (!playWithBot) {
       io.emit('AddStep', { user, position });
-      io.emit('AddMessage', { message: `I have just tick at (${Math.floor(position / 20) + 1}:${position % 20 + 1})`,
-        user: user.username, avatar: localStorage.getItem('avatar')})
+      io.emit('AddMessage', {
+        message: `I have just tick at (${Math.floor(position / 20) +
+          1}:${(position % 20) + 1})`,
+        user: user.username,
+        avatar: localStorage.getItem('avatar')
+      });
     } else {
-      backupvalue = value;
       for (let j = 0; j < histories.length; j += 1) {
         document.getElementById(j).style.background = '#4CAF50';
       }
       this.handleClick(position);
     }
+  };
+
+  handleRequestUndo = e => {
+    e.preventDefault();
+    const { GameState } = this.props;
+    const { user } = GameState;
+    io.emit('RequestUndo', user.username);
+  };
+
+  handleRequestDraw = e => {
+    e.preventDefault();
+  };
+
+  handleRequestSurrender = e => {
+    e.preventDefault();
   };
 
   calculateWinner(squares) {
@@ -475,7 +533,7 @@ class Game extends React.Component {
     }
 
     value = i;
-    // backupvalue = value;
+    backupvalue = value;
     squares[i] = xIsNext ? 'X' : 'O';
 
     const { onAddStep } = this.props;
@@ -585,10 +643,25 @@ class Game extends React.Component {
                 ''
               ) : (
                 <div>
-                  <button type="button" className="myButton">
+                  <button
+                    type="button"
+                    className="myButton"
+                    onClick={this.handleRequestUndo}
+                  >
                     Undo
                   </button>
-                  <button type="button" className="myButton">
+                  <button
+                    type="button"
+                    className="myButton"
+                    onClick={this.handleRequestDraw}
+                  >
+                    Draw
+                  </button>
+                  <button
+                    type="button"
+                    className="myButton"
+                    onClick={this.handleRequestSurrender}
+                  >
                     Surrender
                   </button>
                 </div>

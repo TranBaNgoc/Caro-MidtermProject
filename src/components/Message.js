@@ -9,8 +9,7 @@ const Message = props => {
       style={
         isOwn === false
           ? { textAlign: '-webkit-left', marginBottom: '10px', display: '-webkit-box' }
-          : { textAlign: '-webkit-right', marginBottom: '10px', display: '-webkit-box' }
-         
+          : { textAlign: '-webkit-right', marginBottom: '10px', display: '-webkit-box' } 
       }
     >
       {isOwn === false ? (
