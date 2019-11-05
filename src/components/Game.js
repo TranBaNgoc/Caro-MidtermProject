@@ -99,6 +99,37 @@ class Game extends React.Component {
             this.onUndo();
           }
         });
+
+        io.on('BroadcastDraw', username => {
+          if (user.username !== username) {
+            swal({
+              title: 'Are you sure?',
+              text: `${username} want to be draw. Do you agree?}`,
+              icon: 'warning',
+              buttons: true,
+              dangerMode: true
+            }).then(willDelete => {
+              if (willDelete) {
+                io.emit('AcceptDraw', true);
+              } else {
+                const messageData = {
+                  message: 'Mình không đồng ý hoà.',
+                  user: user.username,
+                  avatar: localStorage.getItem('avatar')
+                };
+                io.emit('AddMessage', messageData);
+                io.emit('AcceptDraw', false);
+              }
+            });
+          }
+        }) 
+
+        io.on('BroadcastAcceptDraw', isAccept => {
+          if (isAccept) {
+            this.resetGame();
+            this.isYouNext = true;
+          } 
+        })
       }
       this.isYouNext = true;
     }
@@ -341,6 +372,9 @@ class Game extends React.Component {
 
   handleRequestDraw = e => {
     e.preventDefault();
+    const { GameState } = this.props;
+    const { user } = GameState;
+    io.emit('RequestDraw', user.username);
   };
 
   handleRequestSurrender = e => {
