@@ -107,6 +107,7 @@ class Game extends React.Component {
         <Message
           content={messageData.message}
           isOwn={user.username === messageData.user}
+          avatar={messageData.avatar}
         />
       );
       onAddMessage(messages);
@@ -126,7 +127,8 @@ class Game extends React.Component {
     // Start socket client
     const messageData = {
       message: messageText,
-      user: user.username
+      user: user.username,
+      avatar: localStorage.getItem('avatar')
     };
 
     if (!playWithBot) {
@@ -277,7 +279,7 @@ class Game extends React.Component {
     if (!playWithBot) {
       io.emit('AddStep', { user, position });
       io.emit('AddMessage', { message: `I have just tick at (${Math.floor(position / 20) + 1}:${position % 20 + 1})`,
-        user: user.username})
+        user: user.username, avatar: localStorage.getItem('avatar')})
     } else {
       backupvalue = value;
       for (let j = 0; j < histories.length; j += 1) {

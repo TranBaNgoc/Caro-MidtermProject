@@ -42,6 +42,11 @@ function fetchLogin(username, password) {
           res.data.user.displayname  
         );
 
+        localStorage.setItem(
+          'avatar',
+          res.data.user.avatar
+        )
+
         localStorage.setItem('token', res.data.token)
         dispatch(LoginSuccess(res.data.user));
         return true;

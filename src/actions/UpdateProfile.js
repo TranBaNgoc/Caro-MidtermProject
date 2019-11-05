@@ -45,7 +45,6 @@ export function fetchPostUpdateProfile(username, password, displayname, image) {
    
 
     return p.then(url => {
-      console.log(url);
       return axios
         .post(`https://btcn06-1612431.herokuapp.com/user/profile`, {
           username,
@@ -63,6 +62,8 @@ export function fetchPostUpdateProfile(username, password, displayname, image) {
               displayname,
               avatar: url
             };
+
+            ls.setItem('avatar', url);
             dispatch(UpdateSuccess(data));
           }
         })
