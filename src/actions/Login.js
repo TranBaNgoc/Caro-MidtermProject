@@ -51,9 +51,9 @@ function fetchLogin(username, password) {
         dispatch(LoginSuccess(res.data.user));
         return true;
       })
-      .catch(error => {
+      .catch(() => {
 
-        dispatch(LoginFail(error.response.data.error));
+        dispatch(LoginFail("Đăng nhập không thành công"));
         return false;
       });
   };

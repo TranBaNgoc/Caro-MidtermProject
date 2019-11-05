@@ -25,7 +25,7 @@ class Game extends React.Component {
   constructor(props) {
     super(props);
     const token = localStorage.getItem('token');
-    let { GameState } = this.props;
+    const { GameState } = this.props;
     const { user, playWithBot } = GameState;
 
     // constructor global
@@ -130,6 +130,39 @@ class Game extends React.Component {
             this.isYouNext = true;
           } 
         })
+
+        io.on('BroadcastDraw', username => {
+          if (user.username !== username) {
+            swal({
+              title: 'Are you sure?',
+              text: `${username} want to be draw. Do you agree?}`,
+              icon: 'warning',
+              buttons: true,
+              dangerMode: true
+            }).then(willDelete => {
+              if (willDelete) {
+                io.emit('AcceptDraw', true);
+              } else {
+                const messageData = {
+                  message: 'Mình không đồng ý hoà.',
+                  user: user.username,
+                  avatar: localStorage.getItem('avatar')
+                };
+                io.emit('AddMessage', messageData);
+                io.emit('AcceptDraw', false);
+              }
+            });
+          }
+        }) 
+
+        io.on('BroadcastSurrender', username => {
+          if (user.username !== username) {
+            swal(`${username} surrender!`, "You are the winner!", "success").then(() => {
+              this.resetGame();
+            })
+          }
+        })
+
       }
       this.isYouNext = true;
     }
@@ -379,6 +412,10 @@ class Game extends React.Component {
 
   handleRequestSurrender = e => {
     e.preventDefault();
+    const { GameState } = this.props;
+    const { user } = GameState;
+    io.emit('RequestSurrender', user.username);
+    this.resetGame();
   };
 
   calculateWinner(squares) {
@@ -541,6 +578,7 @@ class Game extends React.Component {
     colorsArray = Array(400).fill('#dbbc8c');
     const { onResetGame } = this.props;
     value = -1;
+    this.isYouNext = true;
     onResetGame();
   }
 
