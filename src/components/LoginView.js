@@ -5,21 +5,29 @@ import Spinner from 'react-bootstrap/Spinner';
 import { withRouter } from 'react-router-dom';
 import { connect } from 'react-redux';
 import { bindActionCreators } from 'redux';
-import fetchLoginAction from '../actions/Login';
+import {fetchLogin, fetchLoginFacebook} from '../actions/Login';
 
 import '../App.css';
 
 class LoginView extends React.Component {
   handleSubmit = e => {
     e.preventDefault();
-    const { fetchLogin, history } = this.props;
+    const { onFetchLogin, history } = this.props;
     Promise.resolve(
-      fetchLogin(e.target.username.value, e.target.password.value)
+      onFetchLogin(e.target.username.value, e.target.password.value)
     ).then(isLogin => {
       if (isLogin) {
         history.push('/');
       }
     });
+  };
+
+  handleLoginFacebook = e => {
+    e.preventDefault();
+    const { onFetchLoginFacebook } = this.props;
+    Promise.resolve(
+      onFetchLoginFacebook()
+    )
   };
 
   render() {
@@ -66,24 +74,49 @@ class LoginView extends React.Component {
             )}
 
             {pending ? (
-              <Spinner
-                animation="border"
-                role="status"
-              >
+              <Spinner animation="border" role="status">
                 <span className="sr-only">Loading...</span>
               </Spinner>
             ) : (
               ''
             )}
           </Form.Group>
-          
+
           <Form.Group controlId="formBasicCheckbox">
             <Form.Check type="checkbox" label="Save password" />
           </Form.Group>
 
-          <Button variant="primary" type="submit">
-            Login
-          </Button>
+          <Form.Group>
+            <Button variant="success" type="submit">
+              Login
+            </Button>
+          </Form.Group>
+          {/* <Form.Label>
+            or
+          </Form.Label>
+          <Form.Group>
+            
+            <Button
+              variant="primary"
+              type="submit"
+              onClick={this.handleLoginFacebook}
+            >
+              Facebook Login
+            </Button>
+            
+          </Form.Group> */}
+
+          {/* <Form.Group>
+            
+            <Button
+              variant="danger"
+              type="submit"
+              onClick={this.handleLoginFacebook}
+            >
+              Google Login
+            </Button>
+            
+          </Form.Group> */}
         </Form>
       </div>
     );
@@ -97,7 +130,8 @@ const mapStateToProps = state => ({
 const mapDispatchToProps = dispatch =>
   bindActionCreators(
     {
-      fetchLogin: fetchLoginAction
+      onFetchLogin: fetchLogin,
+      onFetchLoginFacebook: fetchLoginFacebook
     },
     dispatch
   );

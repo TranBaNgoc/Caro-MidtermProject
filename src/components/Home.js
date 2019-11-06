@@ -1,14 +1,16 @@
 import React from 'react';
 import Button from 'react-bootstrap/Button';
 import Image from 'react-bootstrap/Image';
+import Spinner from 'react-bootstrap/Spinner';
 import { withRouter } from 'react-router-dom';
 import { connect } from 'react-redux';
 import { bindActionCreators } from 'redux';
 
+import io from '../constants/SocketIO';
 import '../App.css';
-import CreateRoom from '../actions/Home';
+import { CreateRoom, SearchCompetitor, HadCompetitor } from '../actions/Home';
 
-class LoginView extends React.Component {
+class Home extends React.Component {
   constructor(props) {
     super(props);
     const token = localStorage.getItem('token');
@@ -18,10 +20,26 @@ class LoginView extends React.Component {
       const { history } = this.props;
       history.push('/login');
     }
+
+    io.on('isHaveCompetitor', isHave => {
+      if (isHave) {
+        this.setPendingSearch(isHave);
+      }
+    });
   }
 
+  setPendingSearch = isHave => {
+    if (isHave) {
+      const { onHadCompetitor } = this.props;
+      onHadCompetitor();
+      this.createRoom(false);
+    }
+  };
+
   createPersonRoom = () => {
-    this.createRoom(false);
+    io.emit('SearchCompetitor', null);
+    const { onSearchCompetitor } = this.props;
+    onSearchCompetitor();
   };
 
   createBotRoom = () => {
@@ -35,6 +53,9 @@ class LoginView extends React.Component {
   };
 
   render() {
+    const { HomeState } = this.props;
+    const { pending } = HomeState;
+
     return (
       <div style={{ textAlignLast: 'center', marginTop: '10%' }}>
         <Button
@@ -63,6 +84,13 @@ class LoginView extends React.Component {
             <Image width="60%" src="user.png" roundedCircle />
           </div>
           Play with another
+          {pending ? (
+            <Spinner animation="border" role="status">
+              <span className="sr-only">Loading...</span>
+            </Spinner>
+          ) : (
+            ''
+          )}
         </Button>
       </div>
     );
@@ -70,13 +98,16 @@ class LoginView extends React.Component {
 }
 
 const mapStateToProps = state => ({
-  GameState: state.Game
+  GameState: state.Game,
+  HomeState: state.HomeReducer
 });
 
 const mapDispatchToProps = dispatch =>
   bindActionCreators(
     {
-      onCreateRoom: CreateRoom
+      onCreateRoom: CreateRoom,
+      onSearchCompetitor: SearchCompetitor,
+      onHadCompetitor: HadCompetitor
     },
     dispatch
   );
@@ -84,4 +115,4 @@ const mapDispatchToProps = dispatch =>
 export default connect(
   mapStateToProps,
   mapDispatchToProps
-)(withRouter(LoginView));
+)(withRouter(Home));

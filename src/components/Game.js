@@ -28,6 +28,7 @@ class Game extends React.Component {
     const { GameState } = this.props;
     const { user, playWithBot } = GameState;
 
+    
     // constructor global
     colorsArray = Array(400).fill('#dbbc8c');
     value = -1;
@@ -35,6 +36,7 @@ class Game extends React.Component {
 
     if (token == null || user == null) {
       const { history } = this.props;
+      io.emit('LeaveRoom', null);
       history.push('/login');
     } else {
       if (!playWithBot) {
@@ -122,14 +124,14 @@ class Game extends React.Component {
               }
             });
           }
-        }) 
+        });
 
         io.on('BroadcastAcceptDraw', isAccept => {
           if (isAccept) {
             this.resetGame();
             this.isYouNext = true;
           } 
-        })
+        });
 
         io.on('BroadcastDraw', username => {
           if (user.username !== username) {
@@ -153,7 +155,7 @@ class Game extends React.Component {
               }
             });
           }
-        }) 
+        });
 
         io.on('BroadcastSurrender', username => {
           if (user.username !== username) {
@@ -161,8 +163,14 @@ class Game extends React.Component {
               this.resetGame();
             })
           }
-        })
+        });
 
+        io.on('CompetitorLeaveRoom', data => {
+          io.emit('LeaveRoom', data);
+          const { onLeaveRoom, history } = this.props;
+          onLeaveRoom();
+          history.push('/');
+        });
       }
       this.isYouNext = true;
     }
@@ -836,6 +844,9 @@ const mapDispatchToProps = dispatch => {
     },
     onAddWinner: winner => {
       dispatch(action.AddWinner(winner));
+    },
+    onLeaveRoom: () => {
+      dispatch(action.LeaveRoom())
     }
   };
 };

@@ -9,6 +9,8 @@ export const ADD_WINNER = 'ADD_WINNER';
 
 // Pre Game
 export const CREATE_ROOM = 'CREATE_ROOM';
+export const SEARCH_COMPETITOR = 'SEARCH_COMPETITOR';
+export const HAD_COMPETITOR = 'HAD_COMPETITOR';
 
 // Chat
 export const ADD_MESSAGE = 'ADD_MESSAGE';
